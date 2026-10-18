@@ -1,0 +1,66 @@
+package main
+
+import (
+	"flag"
+	"fmt"
+	"log"
+	"os"
+
+	"github.com/Akegarasu/blivedm-go/client"
+	"github.com/Akegarasu/blivedm-go/message"
+)
+
+func main() {
+	roomId := flag.Int("r", 0, "Room ID")
+	flag.Parse()
+	// 填入真实房间号或短号，内部会自动解析
+	if *roomId <= 0 {
+		log.Fatalln("room id < 0")
+		return
+	}
+	c := client.NewClient(*roomId)
+
+	c.SetCookie(os.Getenv("BILIBILI_COOKIE"))
+	// 注册弹幕监听
+
+	c.OnDanmaku(func(d *message.Danmaku) {
+		fmt.Printf("[danmu]: %s :\t%s\n", d.Sender.Uname, d.Content)
+	})
+
+	c.OnGift(func(g *message.Gift) {
+		fmt.Printf("[gift]: %s :\t%s x %d\n", g.Uname, g.GiftName, g.Num)
+	})
+
+	c.OnSuperChat(func(sc *message.SuperChat) {
+		fmt.Printf("[superchat]: {%dc} %s :\t%s\n",
+			sc.Price, sc.UserInfo.Uname, sc.Message)
+	})
+
+	c.OnGuardBuy(func(gb *message.GuardBuy) {
+		fmt.Printf("[guardby]: {%s} x %d :\t%s\n", gb.GiftName, gb.Num, gb.Username)
+	})
+
+	/*c.OnUserToast(func(ut *message.UserToast) {
+		fmt.Printf("[usertoast]: %v\n", ut)
+	})
+	*/
+
+	if err := c.Start(); err != nil {
+		log.Fatalf("start fail: %v\n", err)
+		return
+	}
+
+	log.Println("started")
+
+	//ch := make(chan int)
+	// 启动长连接（支持 context 优雅关停）
+	/*
+		if err := c.StartContext(context.Background()); err != nil {
+			log.Fatalf("启动失败: %v", err)
+		}
+
+		c.Wait()
+	*/
+
+	select {}
+}
