@@ -166,3 +166,55 @@ func str(m map[string]any, key string) string {
 	}
 	return ""
 }
+
+type Guard struct {
+	RoomID     int64
+	UID        int64
+	Uname      string
+	GuardType  int64
+	GuardLevel int64
+	Timestamp  time.Time
+}
+
+func ParseGuard(msg map[string]any) (*Guard, error) {
+	g := &Guard{}
+	d := payloadOf(msg)
+	g.UID = int64(num(d["uid"]))
+	g.Uname = str(d, "username")
+	g.GuardType = int64(num(d["guard_type"]))
+	g.GuardLevel = int64(num(d["guard_level"]))
+	g.Timestamp = time.Now()
+	return g, nil
+}
+
+type SuperChat struct {
+	RoomID    int64
+	UID       int64
+	Uname     string
+	Message   string
+	Price     int64
+	StartTime time.Time
+	EndTime   time.Time
+	Color     string
+	Timestamp time.Time
+}
+
+func ParseSuperChat(msg map[string]any) (*SuperChat, error) {
+	sc := &SuperChat{}
+	d := payloadOf(msg)
+	sc.UID = int64(num(d["uid"]))
+	sc.Uname = str(d, "user_info.uname")
+	sc.Message = str(d, "message")
+	sc.Price = int64(num(d["price"]))
+	startTime := int64(num(d["start_time"]))
+	endTime := int64(num(d["end_time"]))
+	if startTime > 0 {
+		sc.StartTime = time.Unix(startTime, 0)
+	}
+	if endTime > 0 {
+		sc.EndTime = time.Unix(endTime, 0)
+	}
+	sc.Color = str(d, "background_bottom_color")
+	sc.Timestamp = time.Now()
+	return sc, nil
+}

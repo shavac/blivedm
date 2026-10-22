@@ -474,3 +474,41 @@ func (es *EventStreamClient) OnGift(h func(gift *Gift)) {
 		h(gift)
 	})
 }
+
+func (es *EventStreamClient) OnGuard(h func(guard *Guard)) {
+	es.OnEvent("GUARD_BUY", func(ev EventMessage) {
+		if ev.Cmd != "GUARD_BUY" {
+			return
+		}
+		var msg map[string]any
+		if err := json.Unmarshal(ev.Raw, &msg); err != nil {
+			es.log("decode guard", "error", err)
+			return
+		}
+		guard, err := ParseGuard(msg)
+		if err != nil {
+			es.log("parse guard", "error", err)
+			return
+		}
+		h(guard)
+	})
+}
+
+func (es *EventStreamClient) OnSuperChat(h func(sc *SuperChat)) {
+	es.OnEvent("SUPER_CHAT_MESSAGE", func(ev EventMessage) {
+		if ev.Cmd != "SUPER_CHAT_MESSAGE" {
+			return
+		}
+		var msg map[string]any
+		if err := json.Unmarshal(ev.Raw, &msg); err != nil {
+			es.log("decode superchat", "error", err)
+			return
+		}
+		sc, err := ParseSuperChat(msg)
+		if err != nil {
+			es.log("parse superchat", "error", err)
+			return
+		}
+		h(sc)
+	})
+}
