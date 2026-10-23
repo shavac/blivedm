@@ -1,22 +1,26 @@
 package blivedm
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/shavac/blivedm/proto"
+	googleproto "google.golang.org/protobuf/proto"
 )
 
 type Danmu struct {
-	RoomID      int64
-	UID         int64
-	Uname       string
-	Content     string
-	medal_name  string
-	medal_level int64
-	guard_level int64
-	Timestamp   time.Time
+	RoomID     int64
+	UID        int64
+	Uname      string
+	Content    string
+	MedalName  string
+	MedalLevel int64
+	GuardLevel int64
+	Timestamp  time.Time
 }
 
 func ParseDanmu(msg map[string]any) (*Danmu, error) {
@@ -35,15 +39,15 @@ func ParseDanmu(msg map[string]any) (*Danmu, error) {
 		dm.UID = parseInt64(sender[0])
 		dm.Uname = anyToString(sender[1])
 		if len(sender) > 3 {
-			dm.medal_level = parseInt64(sender[3])
+			dm.MedalLevel = parseInt64(sender[3])
 		}
 	}
 	if len(info) > 3 {
 		if m, ok := info[3].([]any); ok && len(m) >= 2 {
-			dm.medal_name = anyToString(m[1])
-			dm.medal_level = parseInt64(m[0])
+			dm.MedalName = anyToString(m[1])
+			dm.MedalLevel = parseInt64(m[0])
 			if len(m) > 10 {
-				dm.guard_level = parseInt64(m[10])
+				dm.GuardLevel = parseInt64(m[10])
 			}
 		}
 	}
@@ -73,7 +77,10 @@ func anyToString(v any) string {
 
 func parseInt64(v any) int64 {
 	s := anyToString(v)
-	id, _ := strconv.ParseInt(s, 10, 64)
+	id, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		return 0
+	}
 	return id
 }
 
@@ -217,4 +224,45 @@ func ParseSuperChat(msg map[string]any) (*SuperChat, error) {
 	sc.Color = str(d, "background_bottom_color")
 	sc.Timestamp = time.Now()
 	return sc, nil
+}
+
+type ActType uint32
+
+const (
+	ActTypeEnterRoom ActType = 1
+	ActTypeFollow    ActType = 2
+	ActTypeShare     ActType = 3
+	ActTypeLike      ActType = 4
+)
+
+type Interact struct {
+	RoomID    uint32
+	UID       uint64
+	Uname     string
+	Action    ActType
+	GuardType uint32
+	Timestamp time.Time
+}
+
+func ParseInteractV2(msg map[string]any) (*Interact, error) {
+	d := payloadOf(msg)
+	rawBytes, err := base64.StdEncoding.DecodeString(d["pb"].(string))
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode base64: %v", err)
+	}
+	var iword proto.EventInteractWord
+	err = googleproto.Unmarshal(rawBytes, &iword)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal protobuf: %v", err)
+	}
+	ita := &Interact{
+		RoomID:    iword.GetRoomId(),
+		UID:       iword.GetUid(),
+		Uname:     iword.GetUsername(),
+		Action:    ActType(iword.GetMsgType()),
+		GuardType: iword.GetGuardType(),
+		Timestamp: time.Unix(int64(iword.GetTimestamp()), 0),
+	}
+	return ita, nil
 }

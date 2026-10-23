@@ -512,3 +512,22 @@ func (es *EventStreamClient) OnSuperChat(h func(sc *SuperChat)) {
 		h(sc)
 	})
 }
+
+func (es *EventStreamClient) OnInteract(h func(interact *Interact)) {
+	es.OnEvent("INTERACT_WORD_V2", func(ev EventMessage) {
+		if ev.Cmd != "INTERACT_WORD_V2" {
+			return
+		}
+		var msg map[string]any
+		if err := json.Unmarshal(ev.Raw, &msg); err != nil {
+			es.log("decode interact", "error", err)
+			return
+		}
+		interact, err := ParseInteractV2(msg)
+		if err != nil {
+			es.log("parse interact", "error", err)
+			return
+		}
+		h(interact)
+	})
+}
